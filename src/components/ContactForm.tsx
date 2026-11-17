@@ -50,6 +50,14 @@ const INITIAL_FORM: EnquiryFormData = {
   projectDescription: "",
 };
 
+interface SubmissionMeta {
+  deliveredToBackend: boolean;
+  savedToDatabase: boolean;
+  enquiryId: string | null;
+  customerConfirmationSent: boolean;
+  adminNotificationSent: boolean;
+}
+
 export default function ContactForm() {
   const [activeCurrency, setActiveCurrency] = useState<CurrencyCode>("USD");
   const { rates } = useExchangeRates();
@@ -57,9 +65,16 @@ export default function ContactForm() {
   const [formData, setFormData] = useState<EnquiryFormData>(INITIAL_FORM);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submittedPayload, setSubmittedPayload] =
     useState<EnquiryFormData | null>(null);
-  const [deliveredToLiveBackend, setDeliveredToLiveBackend] = useState(false);
+  const [submissionMeta, setSubmissionMeta] = useState<SubmissionMeta>({
+    deliveredToBackend: false,
+    savedToDatabase: false,
+    enquiryId: null,
+    customerConfirmationSent: false,
+    adminNotificationSent: false,
+  });
   const [copiedBrief, setCopiedBrief] = useState(false);
 
   const dynamicPackageOptions = useMemo(
@@ -178,6 +193,7 @@ export default function ContactForm() {
     }
 
     setErrors({});
+    setSubmissionError(null);
     setIsSubmitting(true);
 
     const normalizedData: EnquiryFormData = {
@@ -199,11 +215,34 @@ export default function ContactForm() {
       });
 
       const result = await response.json();
-      setDeliveredToLiveBackend(Boolean(result?.deliveredToBackend));
+
+      if (!response.ok || !result?.ok) {
+        if (result?.errors) {
+          setErrors(result.errors);
+        }
+        setSubmissionError(
+          result?.message ||
+            "Unable to submit your enquiry right now. Please try again or use WhatsApp."
+        );
+        return;
+      }
+
+      setSubmissionMeta({
+        deliveredToBackend: Boolean(result.deliveredToBackend),
+        savedToDatabase: Boolean(result.savedToDatabase),
+        enquiryId: result.enquiryId || null,
+        customerConfirmationSent: Boolean(
+          result.emailStatus?.customerConfirmationSent
+        ),
+        adminNotificationSent: Boolean(
+          result.emailStatus?.adminNotificationSent
+        ),
+      });
       setSubmittedPayload(normalizedData);
     } catch {
-      setDeliveredToLiveBackend(false);
-      setSubmittedPayload(normalizedData);
+      setSubmissionError(
+        "Network error while contacting the submission service. Please try again or contact us via WhatsApp."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -342,31 +381,43 @@ export default function ContactForm() {
                     </div>
                     <div>
                       <span className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-widest text-blue-400">
-                        {deliveredToLiveBackend
-                          ? "Enquiry Transmitted"
+                        {submissionMeta.deliveredToBackend
+                          ? "Enquiry Recorded"
                           : "Enquiry Validated & Prepared"}
                       </span>
                       <h3 className="font-[family-name:var(--font-jakarta)] text-2xl font-bold text-white mt-1">
-                        {deliveredToLiveBackend
-                          ? "Thank You — Your Project Enquiry Has Been Sent"
+                        {submissionMeta.deliveredToBackend
+                          ? "Thank You — Your Project Enquiry Has Been Received"
                           : "Your Project Enquiry Summary Is Ready"}
                       </h3>
                     </div>
                   </div>
 
                   {/* Honest Backend Status Banner */}
-                  {deliveredToLiveBackend ? (
-                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200 leading-relaxed">
-                      Your project details have been delivered to our configured
-                      intake endpoint. We will review{" "}
-                      <span className="font-semibold text-white">
-                        {submittedPayload.websiteUrl}
-                      </span>{" "}
-                      and respond to{" "}
-                      <span className="font-semibold text-white">
-                        {submittedPayload.email}
-                      </span>
-                      .
+                  {submissionMeta.deliveredToBackend ? (
+                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-200 leading-relaxed space-y-1.5">
+                      <p>
+                        {submissionMeta.savedToDatabase
+                          ? "Your enquiry has been saved to our project database"
+                          : "Your enquiry has been processed"}
+                        {submissionMeta.customerConfirmationSent
+                          ? ` and a confirmation email has been sent to ${submittedPayload.email}.`
+                          : "."}{" "}
+                        We will review{" "}
+                        <span className="font-semibold text-white">
+                          {submittedPayload.websiteUrl}
+                        </span>{" "}
+                        and follow up via{" "}
+                        <span className="font-semibold text-white">
+                          {submittedPayload.email}
+                        </span>
+                        .
+                      </p>
+                      {submissionMeta.enquiryId && (
+                        <p className="text-xs font-[family-name:var(--font-mono)] text-emerald-300/90">
+                          Reference ID: {submissionMeta.enquiryId}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs sm:text-sm text-amber-200/90 leading-relaxed flex items-start gap-3">
@@ -377,15 +428,11 @@ export default function ContactForm() {
                           Yet)
                         </span>
                         All fields passed validation and your enquiry payload has
-                        been structured below. Because no external email or
-                        webhook endpoint (
-                        <code className="font-[family-name:var(--font-mono)] text-amber-300">
-                          ENQUIRY_WEBHOOK_URL
-                        </code>
-                        ) is currently connected in this environment, no message
-                        has been transmitted over the network yet. You can copy
-                        the formatted brief below or send it directly via
-                        WhatsApp.
+                        been structured below. Because no database, email, or
+                        webhook service is currently connected in this
+                        environment, no message has been transmitted over the
+                        network yet. You can copy the formatted brief below or
+                        send it directly via WhatsApp.
                       </div>
                     </div>
                   )}
@@ -803,6 +850,16 @@ export default function ContactForm() {
                     )}
                   </div>
 
+                  {submissionError && (
+                    <div
+                      role="alert"
+                      className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-xs sm:text-sm text-red-200 flex items-start gap-2.5"
+                    >
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <span>{submissionError}</span>
+                    </div>
+                  )}
+
                   {/* Submit Button */}
                   <div className="pt-2">
                     <button
@@ -813,7 +870,7 @@ export default function ContactForm() {
                       <Send className="w-4 h-4" />
                       <span>
                         {isSubmitting
-                          ? "Validating Enquiry..."
+                          ? "Submitting Enquiry..."
                           : "Submit Project Enquiry"}
                       </span>
                     </button>
