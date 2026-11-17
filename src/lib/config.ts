@@ -162,11 +162,10 @@ export const SITE_CONFIG = {
   /**
    * Configurable integration endpoints.
    * No personal or fake phone/email credentials are embedded.
-   * Set NEXT_PUBLIC_WHATSAPP_NUMBER (digits only, e.g. "15550000000") or NEXT_PUBLIC_ENQUIRY_WEBHOOK_URL in .env.local when connecting live channels.
+   * Set NEXT_PUBLIC_ENQUIRY_ENDPOINT or ENQUIRY_WEBHOOK_URL when connecting external webhooks.
    */
   integrations: {
     enquiryEndpoint: process.env.NEXT_PUBLIC_ENQUIRY_ENDPOINT || "/api/enquiry",
-    whatsappPlaceholderNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "",
     hasLiveBackend: Boolean(process.env.NEXT_PUBLIC_ENQUIRY_WEBHOOK_URL),
   },
   navLinks: [
@@ -280,18 +279,3 @@ export const SITE_CONFIG = {
     ],
   },
 };
-
-export function buildWhatsAppEnquiryUrl(customMessage?: string): string {
-  const defaultText =
-    customMessage ||
-    "Hello, I would like to enquire about transforming our existing business website into an installable Progressive Web App (PWA).";
-  const encoded = encodeURIComponent(defaultText);
-  const cleanNumber = SITE_CONFIG.integrations.whatsappPlaceholderNumber.replace(
-    /[^0-9]/g,
-    ""
-  );
-  if (cleanNumber) {
-    return `https://wa.me/${cleanNumber}?text=${encoded}`;
-  }
-  return `https://wa.me/?text=${encoded}`;
-}

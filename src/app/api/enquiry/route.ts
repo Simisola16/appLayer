@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           message:
-            "Email delivery failed. Please try again or contact us via WhatsApp.",
+            "Email delivery failed. Please try again shortly.",
           details: emailResult.errors,
         },
         { status: 502 }

@@ -5,7 +5,6 @@ import {
   Send,
   CheckCircle2,
   AlertCircle,
-  MessageSquare,
   Copy,
   Check,
   RefreshCw,
@@ -16,7 +15,6 @@ import {
   CURRENCIES,
   CurrencyCode,
   ExchangeRatesMap,
-  buildWhatsAppEnquiryUrl,
   formatPackageOptionForCurrency,
 } from "@/lib/config";
 import { useExchangeRates } from "@/lib/useExchangeRates";
@@ -222,7 +220,7 @@ export default function ContactForm() {
         }
         setSubmissionError(
           result?.message ||
-            "Unable to submit your enquiry right now. Please try again or use WhatsApp."
+            "Unable to submit your enquiry right now. Please try again."
         );
         return;
       }
@@ -241,7 +239,7 @@ export default function ContactForm() {
       setSubmittedPayload(normalizedData);
     } catch {
       setSubmissionError(
-        "Network error while contacting the submission service. Please try again or contact us via WhatsApp."
+        "Network error while contacting the submission service. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -334,39 +332,6 @@ export default function ContactForm() {
                 </li>
               </ul>
             </div>
-
-            {/* WhatsApp Contact Action (Configurable Placeholder Number) */}
-            <div className="bg-[#10141f] border border-white/10 rounded-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-white">
-                  Prefer Direct Messaging?
-                </span>
-                <span className="text-[11px] font-[family-name:var(--font-mono)] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded">
-                  WhatsApp Channel
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Start a project conversation on WhatsApp with a pre-formatted
-                transformation enquiry message.
-              </p>
-              <a
-                href={buildWhatsAppEnquiryUrl(
-                  submittedPayload
-                    ? formatEnquirySummaryText(submittedPayload)
-                    : undefined
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-3.5 px-5 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Enquire via WhatsApp</span>
-              </a>
-              <p className="text-[11px] text-slate-500 font-[family-name:var(--font-mono)]">
-                Configurable endpoint via NEXT_PUBLIC_WHATSAPP_NUMBER in{" "}
-                <code className="text-slate-400">src/lib/config.ts</code>.
-              </p>
-            </div>
           </div>
 
           {/* Right Column: Interactive Project Enquiry Form */}
@@ -431,8 +396,8 @@ export default function ContactForm() {
                         been structured below. Because no database, email, or
                         webhook service is currently connected in this
                         environment, no message has been transmitted over the
-                        network yet. You can copy the formatted brief below or
-                        send it directly via WhatsApp.
+                        network yet. You can copy the formatted brief below for
+                        your records.
                       </div>
                     </div>
                   )}
@@ -502,7 +467,7 @@ export default function ContactForm() {
                     <button
                       type="button"
                       onClick={handleCopyBrief}
-                      className="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-3.5 px-5 rounded-xl transition-colors"
+                      className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-3.5 px-5 rounded-xl transition-colors"
                     >
                       {copiedBrief ? (
                         <>
@@ -516,18 +481,6 @@ export default function ContactForm() {
                         </>
                       )}
                     </button>
-
-                    <a
-                      href={buildWhatsAppEnquiryUrl(
-                        formatEnquirySummaryText(submittedPayload)
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-3.5 px-5 rounded-xl transition-colors"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Send Brief via WhatsApp</span>
-                    </a>
                   </div>
 
                   <button
