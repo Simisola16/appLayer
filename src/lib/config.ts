@@ -1,4 +1,4 @@
-export type CurrencyCode = "USD" | "EUR" | "GBP" | "CAD" | "AUD";
+export type CurrencyCode = "USD" | "EUR" | "GBP" | "CAD" | "AUD" | "NGN";
 
 export interface CurrencyConfig {
   code: CurrencyCode;
@@ -37,6 +37,12 @@ export const CURRENCIES: CurrencyConfig[] = [
     symbol: "A$",
     label: "AUD (A$)",
     region: "Australian Dollar",
+  },
+  {
+    code: "NGN",
+    symbol: "₦",
+    label: "NGN (₦)",
+    region: "Nigerian Naira",
   },
 ];
 
@@ -125,6 +131,7 @@ export const SITE_CONFIG = {
         GBP: "£79",
         CAD: "CA$139",
         AUD: "A$149",
+        NGN: "₦150,000",
       },
       description:
         "For businesses looking to make their existing websites installable.",
@@ -152,6 +159,7 @@ export const SITE_CONFIG = {
         GBP: "£199",
         CAD: "CA$349",
         AUD: "A$379",
+        NGN: "₦375,000",
       },
       badge: "MOST POPULAR",
       popular: true,
@@ -183,6 +191,7 @@ export const SITE_CONFIG = {
         GBP: "£399",
         CAD: "CA$699",
         AUD: "A$759",
+        NGN: "₦750,000",
       },
       description:
         "For businesses requiring more advanced functionality and custom integrations.",

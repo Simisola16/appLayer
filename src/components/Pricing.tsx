@@ -196,7 +196,7 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
                   </div>
 
                   {/* Dynamic Price Display */}
-                  <div className="mb-4 flex items-baseline gap-2">
+                  <div className="mb-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     {pkg.pricePrefix && (
                       <span
                         className={`text-sm font-medium ${
@@ -208,9 +208,11 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
                     )}
                     <span
                       key={`${pkg.id}-${selectedCurrency}`}
-                      className={`font-[family-name:var(--font-jakarta)] text-4xl sm:text-5xl font-extrabold tracking-tight ${
-                        isPopular ? "text-white" : "text-slate-900"
-                      }`}
+                      className={`font-[family-name:var(--font-jakarta)] font-extrabold tracking-tight ${
+                        activePrice.length > 6
+                          ? "text-3xl sm:text-4xl"
+                          : "text-4xl sm:text-5xl"
+                      } ${isPopular ? "text-white" : "text-slate-900"}`}
                     >
                       {activePrice}
                     </span>

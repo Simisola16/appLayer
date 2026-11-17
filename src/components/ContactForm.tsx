@@ -495,7 +495,7 @@ export default function ContactForm() {
                     <h3 className="font-[family-name:var(--font-jakarta)] text-xl font-bold text-white">
                       Project Specification Form
                     </h3>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {CURRENCIES.map((curr) => (
                         <button
                           key={curr.code}
