@@ -15,8 +15,11 @@ import {
   SITE_CONFIG,
   CURRENCIES,
   CurrencyCode,
+  ExchangeRatesMap,
   buildWhatsAppEnquiryUrl,
+  formatPackageOptionForCurrency,
 } from "@/lib/config";
+import { useExchangeRates } from "@/lib/useExchangeRates";
 import {
   DEVICE_OPTIONS,
   DeviceOption,
@@ -26,17 +29,13 @@ import {
   validateEnquiryForm,
 } from "@/lib/validation";
 
-function getPackageOptionsForCurrency(currency: CurrencyCode): string[] {
-  const pkgOptions = SITE_CONFIG.packages.map((pkg) => {
-    if (currency === "USD") {
-      return pkg.formOptionValue;
-    }
-    const price = pkg.pricesByCurrency[currency] || pkg.priceDisplay;
-    const shortName = pkg.name.replace(" Package", "");
-    return pkg.pricePrefix
-      ? `${shortName} — ${pkg.pricePrefix} ${price} (${currency})`
-      : `${shortName} — ${price} (${currency})`;
-  });
+function getPackageOptionsForCurrency(
+  currency: CurrencyCode,
+  rates: ExchangeRatesMap
+): string[] {
+  const pkgOptions = SITE_CONFIG.packages.map((pkg) =>
+    formatPackageOptionForCurrency(pkg, currency, rates)
+  );
 
   return [...pkgOptions, "Not Sure — Request a Recommendation"];
 }
@@ -53,6 +52,7 @@ const INITIAL_FORM: EnquiryFormData = {
 
 export default function ContactForm() {
   const [activeCurrency, setActiveCurrency] = useState<CurrencyCode>("USD");
+  const { rates } = useExchangeRates();
   const [selectedPkgIndex, setSelectedPkgIndex] = useState<number>(1); // Default to Professional (index 1)
   const [formData, setFormData] = useState<EnquiryFormData>(INITIAL_FORM);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -63,9 +63,18 @@ export default function ContactForm() {
   const [copiedBrief, setCopiedBrief] = useState(false);
 
   const dynamicPackageOptions = useMemo(
-    () => getPackageOptionsForCurrency(activeCurrency),
-    [activeCurrency]
+    () => getPackageOptionsForCurrency(activeCurrency, rates),
+    [activeCurrency, rates]
   );
+
+  const handleCurrencyToggle = (code: CurrencyCode) => {
+    setActiveCurrency(code);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("change-pwa-currency", { detail: code })
+      );
+    }
+  };
 
   // Keep formData.preferredPackage synchronized when currency or selectedPkgIndex changes
   useEffect(() => {
@@ -500,7 +509,7 @@ export default function ContactForm() {
                         <button
                           key={curr.code}
                           type="button"
-                          onClick={() => setActiveCurrency(curr.code)}
+                          onClick={() => handleCurrencyToggle(curr.code)}
                           className={`px-2 py-1 rounded text-[11px] font-[family-name:var(--font-mono)] transition-colors ${
                             activeCurrency === curr.code
                               ? "bg-blue-600 text-white font-semibold"

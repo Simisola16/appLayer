@@ -15,7 +15,12 @@ import {
   CURRENCIES,
   CurrencyCode,
   PackageItem,
+  convertPriceFromUsd,
+  formatExchangeRateLabel,
+  formatPackageOptionForCurrency,
+  getCurrencyMeta,
 } from "@/lib/config";
+import { useExchangeRates } from "@/lib/useExchangeRates";
 
 interface PricingProps {
   onSelectPackage?: (packageValue: string) => void;
@@ -24,6 +29,7 @@ interface PricingProps {
 export default function Pricing({ onSelectPackage }: PricingProps) {
   const [selectedCurrency, setSelectedCurrency] =
     useState<CurrencyCode>("USD");
+  const { rates, source, updatedAt } = useExchangeRates();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -35,6 +41,23 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
       ) {
         setSelectedCurrency(urlCurrency);
       }
+
+      const handleExternalCurrency = (event: Event) => {
+        const customEvent = event as CustomEvent<CurrencyCode>;
+        if (
+          customEvent.detail &&
+          CURRENCIES.some((item) => item.code === customEvent.detail)
+        ) {
+          setSelectedCurrency(customEvent.detail);
+        }
+      };
+
+      window.addEventListener("change-pwa-currency", handleExternalCurrency);
+      return () =>
+        window.removeEventListener(
+          "change-pwa-currency",
+          handleExternalCurrency
+        );
     }
   }, []);
 
@@ -48,15 +71,11 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
   };
 
   const handlePackageClick = (pkg: PackageItem) => {
-    const displayedPrice =
-      pkg.pricesByCurrency[selectedCurrency] || pkg.priceDisplay;
-    const shortName = pkg.name.replace(" Package", "");
-    const formattedOption =
-      selectedCurrency === "USD"
-        ? pkg.formOptionValue
-        : pkg.pricePrefix
-        ? `${shortName} — ${pkg.pricePrefix} ${displayedPrice} (${selectedCurrency})`
-        : `${shortName} — ${displayedPrice} (${selectedCurrency})`;
+    const formattedOption = formatPackageOptionForCurrency(
+      pkg,
+      selectedCurrency,
+      rates
+    );
 
     if (onSelectPackage) {
       onSelectPackage(formattedOption);
@@ -77,8 +96,8 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
     }
   };
 
-  const activeCurrencyMeta =
-    CURRENCIES.find((c) => c.code === selectedCurrency) || CURRENCIES[0];
+  const activeCurrencyMeta = getCurrencyMeta(selectedCurrency);
+  const rateLabel = formatExchangeRateLabel(selectedCurrency, rates);
 
   return (
     <section
@@ -99,7 +118,7 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
           <p className="mt-4 text-lg text-slate-600 leading-relaxed">
             Select the transformation tier that matches your technical
             requirements. Switch between international currencies below to view
-            indicative package pricing.
+            accurately converted package pricing.
           </p>
 
           {/* Interactive International Currency Switcher */}
@@ -140,8 +159,17 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
             <span className="font-semibold text-slate-700">
               {activeCurrencyMeta.region} ({activeCurrencyMeta.code})
             </span>
-            {selectedCurrency !== "USD" &&
-              " • Converted from standard USD base packages"}
+            {selectedCurrency !== "USD" && (
+              <>
+                {" "}
+                •{" "}
+                <span className="text-slate-700 font-semibold">
+                  {rateLabel}
+                </span>{" "}
+                ({source === "live" ? "live rate" : "reference rate"}, {updatedAt}
+                )
+              </>
+            )}
           </p>
         </div>
 
@@ -149,8 +177,11 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
           {SITE_CONFIG.packages.map((pkg, idx) => {
             const isPopular = Boolean(pkg.popular);
-            const activePrice =
-              pkg.pricesByCurrency[selectedCurrency] || pkg.priceDisplay;
+            const activePrice = convertPriceFromUsd(
+              pkg.basePriceUsd,
+              selectedCurrency,
+              rates
+            );
 
             return (
               <motion.div
@@ -207,7 +238,7 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
                       </span>
                     )}
                     <span
-                      key={`${pkg.id}-${selectedCurrency}`}
+                      key={`${pkg.id}-${selectedCurrency}-${activePrice}`}
                       className={`font-[family-name:var(--font-jakarta)] font-extrabold tracking-tight ${
                         activePrice.length > 6
                           ? "text-3xl sm:text-4xl"
@@ -224,6 +255,19 @@ export default function Pricing({ onSelectPackage }: PricingProps) {
                       / project
                     </span>
                   </div>
+
+                  {/* USD Base Reference when viewing in non-USD currencies */}
+                  {selectedCurrency !== "USD" && (
+                    <p
+                      className={`text-xs font-[family-name:var(--font-mono)] mb-4 ${
+                        isPopular ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Base USD price:{" "}
+                      {pkg.pricePrefix ? `${pkg.pricePrefix} ` : ""}
+                      {pkg.priceDisplay}
+                    </p>
+                  )}
 
                   {/* Package Description */}
                   <p

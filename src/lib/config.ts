@@ -1,10 +1,13 @@
 export type CurrencyCode = "USD" | "EUR" | "GBP" | "CAD" | "AUD" | "NGN";
 
+export type ExchangeRatesMap = Record<CurrencyCode, number>;
+
 export interface CurrencyConfig {
   code: CurrencyCode;
   symbol: string;
   label: string;
   region: string;
+  decimals: number;
 }
 
 export const CURRENCIES: CurrencyConfig[] = [
@@ -13,44 +16,116 @@ export const CURRENCIES: CurrencyConfig[] = [
     symbol: "$",
     label: "USD ($)",
     region: "United States Dollar",
+    decimals: 0,
   },
   {
     code: "EUR",
     symbol: "€",
     label: "EUR (€)",
     region: "Euro",
+    decimals: 2,
   },
   {
     code: "GBP",
     symbol: "£",
     label: "GBP (£)",
     region: "British Pound",
+    decimals: 2,
   },
   {
     code: "CAD",
     symbol: "CA$",
     label: "CAD (CA$)",
     region: "Canadian Dollar",
+    decimals: 2,
   },
   {
     code: "AUD",
     symbol: "A$",
     label: "AUD (A$)",
     region: "Australian Dollar",
+    decimals: 2,
   },
   {
     code: "NGN",
     symbol: "₦",
     label: "NGN (₦)",
     region: "Nigerian Naira",
+    decimals: 0,
   },
 ];
+
+/**
+ * Fallback USD exchange rates (snapshot from 2026-11-17) used only if live
+ * exchange-rate endpoints are temporarily unreachable.
+ */
+export const FALLBACK_EXCHANGE_RATES: ExchangeRatesMap = {
+  USD: 1,
+  EUR: 0.908584,
+  GBP: 0.758255,
+  CAD: 1.42937,
+  AUD: 1.483068,
+  NGN: 1350.055103,
+};
+
+export const FALLBACK_RATE_UPDATED_AT = "2026-11-17";
+
+export function getCurrencyMeta(code: CurrencyCode): CurrencyConfig {
+  return CURRENCIES.find((c) => c.code === code) || CURRENCIES[0];
+}
+
+/**
+ * Converts a base USD package price accurately into the selected currency
+ * using live (or fallback) USD exchange rates.
+ */
+export function convertPriceFromUsd(
+  baseUsd: number,
+  currency: CurrencyCode,
+  rates: Partial<ExchangeRatesMap> = FALLBACK_EXCHANGE_RATES
+): string {
+  const meta = getCurrencyMeta(currency);
+  const rate =
+    currency === "USD"
+      ? 1
+      : rates[currency] ?? FALLBACK_EXCHANGE_RATES[currency];
+
+  const rawConverted = baseUsd * rate;
+  const roundedValue =
+    meta.decimals === 0
+      ? Math.round(rawConverted)
+      : Math.round(rawConverted * 100) / 100;
+
+  const formattedNumber = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: meta.decimals,
+    maximumFractionDigits: meta.decimals,
+  }).format(roundedValue);
+
+  return `${meta.symbol}${formattedNumber}`;
+}
+
+export function formatExchangeRateLabel(
+  currency: CurrencyCode,
+  rates: Partial<ExchangeRatesMap> = FALLBACK_EXCHANGE_RATES
+): string {
+  if (currency === "USD") {
+    return "Base pricing currency (USD)";
+  }
+  const meta = getCurrencyMeta(currency);
+  const rate = rates[currency] ?? FALLBACK_EXCHANGE_RATES[currency];
+  const decimals = currency === "NGN" ? 2 : 4;
+  const formattedRate = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(rate);
+
+  return `1 USD = ${meta.symbol}${formattedRate} ${currency}`;
+}
 
 export interface PackageItem {
   id: "starter" | "professional" | "advanced";
   name: string;
+  basePriceUsd: number;
   priceDisplay: string;
-  pricesByCurrency: Record<CurrencyCode, string>;
   pricePrefix?: string;
   badge?: string;
   popular?: boolean;
@@ -63,14 +138,18 @@ export interface PackageItem {
 
 export function formatPackageOptionForCurrency(
   pkg: PackageItem,
-  currency: CurrencyCode
+  currency: CurrencyCode,
+  rates: Partial<ExchangeRatesMap> = FALLBACK_EXCHANGE_RATES
 ): string {
-  const price = pkg.pricesByCurrency[currency] || pkg.priceDisplay;
+  if (currency === "USD") {
+    return pkg.formOptionValue;
+  }
+  const convertedPrice = convertPriceFromUsd(pkg.basePriceUsd, currency, rates);
   const shortTitle = pkg.name.replace(" Package", "");
   if (pkg.pricePrefix) {
-    return `${shortTitle} — ${pkg.pricePrefix} ${price} (${currency})`;
+    return `${shortTitle} — ${pkg.pricePrefix} ${convertedPrice} (${currency})`;
   }
-  return `${shortTitle} — ${price} (${currency})`;
+  return `${shortTitle} — ${convertedPrice} (${currency})`;
 }
 
 export const SITE_CONFIG = {
@@ -124,15 +203,8 @@ export const SITE_CONFIG = {
     {
       id: "starter",
       name: "Starter Package",
+      basePriceUsd: 99,
       priceDisplay: "$99",
-      pricesByCurrency: {
-        USD: "$99",
-        EUR: "€92",
-        GBP: "£79",
-        CAD: "CA$139",
-        AUD: "A$149",
-        NGN: "₦150,000",
-      },
       description:
         "For businesses looking to make their existing websites installable.",
       features: [
@@ -152,15 +224,8 @@ export const SITE_CONFIG = {
     {
       id: "professional",
       name: "Professional Package",
+      basePriceUsd: 249,
       priceDisplay: "$249",
-      pricesByCurrency: {
-        USD: "$249",
-        EUR: "€229",
-        GBP: "£199",
-        CAD: "CA$349",
-        AUD: "A$379",
-        NGN: "₦375,000",
-      },
       badge: "MOST POPULAR",
       popular: true,
       description:
@@ -183,16 +248,9 @@ export const SITE_CONFIG = {
     {
       id: "advanced",
       name: "Advanced Package",
+      basePriceUsd: 499,
       pricePrefix: "Starting at",
       priceDisplay: "$499",
-      pricesByCurrency: {
-        USD: "$499",
-        EUR: "€459",
-        GBP: "£399",
-        CAD: "CA$699",
-        AUD: "A$759",
-        NGN: "₦750,000",
-      },
       description:
         "For businesses requiring more advanced functionality and custom integrations.",
       inheritedLabel: "Includes everything in Professional, plus:",
